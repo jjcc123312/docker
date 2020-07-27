@@ -287,6 +287,15 @@ docker ps
 
 #查看所有的容器
 docker ps -a
+
+#查看最后创建的容器数量：docker ps -n 1
+docker ps -n ?
+
+#只查看容器的id
+docker ps -q
+
+#查看所有容器的容器id
+docker ps -aq
 ```
 
 <img src=".\img\1572775994057.png" alt="1572775994057" style="zoom:150%;" />
@@ -304,12 +313,17 @@ docker ps -a
 | --name      | 为创建的容器命名                                             |
 | -v          | 表示目录映射关系（前者是宿主机目录，后者是映射到宿主机上的目录）。格式为：/.../.../...`:`/.../.../... |
 | -d          | 在run后面加上-d参数,则会**创建一个守护式容器在后台运行**（这样创建容器后不会自动登录容器，如果只加`-i` `-t`两个参数，创建后就会自动进去容器）。 |
-| -p          | 表示端口映射，前者是宿主机端口，后者是容器内的映射端口。可以使用多个-p做多个端口映射。格式为：主机(宿主)端口:容器端口 |
+| -p          | 表示端口映射，前者是宿主机端口，后者是容器内的映射端口。可以使用多个-p做多个端口映射。格式为：主机(宿主)端口:容器端口(常用)、ip:主机端口:容器端口。 |
+| -P          | 大写p，随机指定端口                                          |
 | -m          | 设置容器使用内存最大值                                       |
 | --link=[]   | 添加链接到另一个容器；                                       |
 | --expose=[] | 开放一个端口或一组端口                                       |
 | -e          | username="ritchie": 设置环境变量；                           |
 | --env-file  | --env-file=[]: 从指定文件读入环境变量；                      |
+
+##### docker run 流程图：
+
+![img](.\img\1595401351885-30be0b17-b9be-4178-9757-7bc990e323eb.png)
 
 ##### 1）交互式容器
 
@@ -322,6 +336,16 @@ docker run -i -t --name=mycentos7 centos:7 /bin/bash
 ```
 
 <img src=".\img\1572783575113.png" alt="1572783575113" style="zoom:150%;" />
+
+###### 从容器退回到主机
+
+```powershell
+# 容器直接突出
+exit
+
+# 容器不停止退出
+ctrl + P + Q
+```
 
 ##### 	2）守护式容器
 
@@ -337,7 +361,38 @@ docker exec -it mycentos2 /bin/bash
 
 ![1572789073852](.\img\1572789073852.png)
 
-#### 2.3 停止与启动容器
+#### 2.3 退出容器和进入容器
+
+##### 从容器退回到主机
+
+```powershell
+# 容器直接退出。对于交互式容器，会终止停止该容器
+exit
+
+# 容器不停止退出
+ctrl + P + Q
+```
+
+##### 从主机进入容器
+
+```powershell
+# 启动容器后，自动进入容器内
+docker start -i mycentos2
+
+# 启动容器后，手动进入容器内。该命令只适用于交互式容器
+docker attach mycentos2
+
+# 启动容器后，手动进入容器内。适用于守护式容器
+docker exec -it 容器ID /bin/bash 
+```
+
+**区别：**
+
+*#docker exec #进入当前容器后开启一个新的终端，可以在里面操作。（常用）*
+
+*#docker attach # 进入容器正在执行的终端*
+
+#### 2.4 停止与启动容器
 
 ```shell
 # 启动已有的容器：docker start 容器名称或者ID
@@ -345,11 +400,17 @@ docker start mycentos2
 
 # 停止容器
 docker stop mycentos2
+
+# 重启容器
+docker restart mycentos2
+
+# 强制停止当前容器
+docker kill mycentos2
 ```
 
 ![1572789198247](.\img\1572789198247.png)
 
-#### 2.4 文件拷贝
+#### 2.5 文件拷贝
 
 - 将linux宿主机中的文件或文件夹拷贝到容器内可以使用命令：
 
@@ -381,7 +442,7 @@ docker cp mycentos2:/b.txt /root
 >
 > 拷贝操作都是在linux宿主机中完成。
 
-#### 2.5 目录挂载
+#### 2.6 目录挂载
 
 可以在创建容器的时候，将宿主机的目录与容器内的目录进行映射，这样我们就可以通过修改宿主机某个目录的文件从而去影响容器。
 
@@ -409,7 +470,7 @@ ll /usr/local/test
 > 注意：如果你共享的是多级的目录，可能会出现权限不足的提示。 这是因为CentOS7中的安全模块selinux把
 > 权限禁掉了，需要添加参数 **--privileged=true** 来解决挂载的目录没有权限的问题。
 
-#### 2.6 查看容器网络信息
+#### 2.7 查看容器网络信息
 
 ```shell
 # docker inspect 容器名
@@ -420,7 +481,7 @@ docker inspect mycentos1
 
 > 容器之间在一个局域网内，linux宿主机器可以与容器相互通信；但是外部的物理机笔记本是不能与容器直接通信的，如果需要则需要通过宿主机器端口的代理。
 
-#### 2.7 删除容器
+#### 2.8 删除容器
 
 ```shell
 # docker rm 容器名称或者容器Id
@@ -434,7 +495,71 @@ docker rm 'docker ps -a -q'
 
 > 如果容器是运行状态则删除失败，需要停止容器才能删除
 
+####  2.9 查看容器日志
 
+```powershell
+docker logs --help
+Options:
+      --details        Show extra details provided to logs 
+*  -f, --follow         Follow log output
+      --since string   Show logs since timestamp (e.g. 2013-01-02T13:23:37) or relative (e.g. 42m for 42 minutes)
+*      --tail string    Number of lines to show from the end of the logs (default "all")
+*  -t, --timestamps     Show timestamps
+      --until string   Show logs before a timestamp (e.g. 2013-01-02T13:23:37) or relative (e.g. 42m for 42 minutes)
+➜  ~ docker run -d centos /bin/sh -c "while true;do echo 6666;sleep 1;done" #模拟日志      
+#显示日志
+-tf		#显示日志信息（一直更新）
+--tail number #需要显示日志条数
+docker logs -t --tail n 容器id #查看n行日志
+docker logs -ft 容器id #跟着日志
+```
+
+#### 3.0 Docker命令帮助文档（重要）
+
+```powershell
+  attach      Attach local standard input, output, and error streams to a running container
+  #当前shell下 attach连接指定运行的镜像
+  build       Build an image from a Dockerfile # 通过Dockerfile定制镜像
+  commit      Create a new image from a container's changes #提交当前容器为新的镜像
+  cp          Copy files/folders between a container and the local filesystem #拷贝文件
+  create      Create a new container #创建一个新的容器
+  diff        Inspect changes to files or directories on a container's filesystem #查看docker容器的变化
+  events      Get real time events from the server # 从服务获取容器实时时间
+  exec        Run a command in a running container # 在运行中的容器上运行命令
+  export      Export a container's filesystem as a tar archive #导出容器文件系统作为一个tar归档文件[对应import]
+  history     Show the history of an image # 展示一个镜像形成历史
+  images      List images #列出系统当前的镜像
+  import      Import the contents from a tarball to create a filesystem image #从tar包中导入内容创建一个文件系统镜像
+  info        Display system-wide information # 显示全系统信息
+  inspect     Return low-level information on Docker objects #查看容器详细信息
+  kill        Kill one or more running containers # kill指定docker容器
+  load        Load an image from a tar archive or STDIN #从一个tar包或标准输入中加载一个镜像[对应save]
+  login       Log in to a Docker registry #
+  logout      Log out from a Docker registry
+  logs        Fetch the logs of a container
+  pause       Pause all processes within one or more containers
+  port        List port mappings or a specific mapping for the container
+  ps          List containers
+  pull        Pull an image or a repository from a registry
+  push        Push an image or a repository to a registry
+  rename      Rename a container
+  restart     Restart one or more containers
+  rm          Remove one or more containers
+  rmi         Remove one or more images
+  run         Run a command in a new container
+  save        Save one or more images to a tar archive (streamed to STDOUT by default)
+  search      Search the Docker Hub for images
+  start       Start one or more stopped containers
+  stats       Display a live stream of container(s) resource usage statistics
+  stop        Stop one or more running containers
+  tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE
+  top         Display the running processes of a container
+  unpause     Unpause all processes within one or more containers
+  update      Update configuration of one or more containers
+  version     Show the Docker version information
+  wait        Block until one or more containers stop, then print their exit codes
+
+```
 
 ## 四、Docker应用部署
 
@@ -465,7 +590,7 @@ docker run -i -d -p 3306:3306 -e MYSQL_ROOT_PASSWORD=zsl19970202. --name=mysql5.
 #### 1.3 操作容器Mysql
 
 ```sh
-# 拉取MySQL 5.7镜像
+# 进入mysql容器
 docker exec -it mysql5.7 /bin/bash
 
 # 登录容器里面的mysql
@@ -637,6 +762,40 @@ start slave;
 
  <img src=".\img\1573811803626.png" alt="1573811803626" style="zoom:150%;" /> 
 
+#### 1.6 使用挂载
+
+数据？如果数据都在容器中，那么我们容器删除，数据就会丢失！需求：数据可以持久化
+
+MySQL，容器删除了，删库跑路！需求：MySQL数据可以存储在本地！
+
+容器之间可以有一个数据共享的技术！Docker容器中产生的数据，同步到本地！
+
+![在这里插入图片描述](.\img\watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQxODIyMzQ1,size_16,color_FFFFFF,t_70)
+
+**总结一句话：容器的持久化和同步操作！容器间也是可以数据共享的！**
+
+```powershell
+# 获取mysql镜像
+➜  ~ docker pull mysql:5.7
+# 运行容器,需要做数据挂载 #安装启动mysql，需要配置密码的，这是要注意点！
+# 参考官网hub 
+docker run --name some-mysql -e MYSQL_ROOT_PASSWORD=my-secret-pw -d mysql:tag
+
+#启动我们得
+-d 后台运行
+-p 端口映射
+-v 卷挂载
+-e 环境配置
+-- name 容器名字
+➜  ~ docker run -d -p 3306:3306 -v /home/mysql/conf:/etc/mysql/conf.d -v /home/mysql/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 --name mysql01 mysql:5.7
+
+# 启动成功之后，我们在本地使用sqlyog来测试一下
+# sqlyog-连接到服务器的3306--和容器内的3306映射 
+
+# 在本地测试创建一个数据库，查看一下我们映射的路径是否ok！
+
+```
+
 ### 2. Tomcat部署
 
 #### 2.1 拉取镜像
@@ -792,16 +951,19 @@ Dockerfile文件内容一般分为4部分：
 
 | 命令                                 | 作用                                                         |
 | ------------------------------------ | ------------------------------------------------------------ |
-| `FORM` image_name:tag                | 定义了使用哪个基础镜像启动构建流程                           |
-| `MAINTAINER` user_name               | 声明镜像的创建者                                             |
+| `FROM` image_name:tag                | 定义了使用哪个基础镜像启动构建流程                           |
+| `MAINTAINER` user_name               | 声明镜像的创建者，姓名+邮箱                                  |
 | `ENV` key value                      | 设置环境变量（可以写多条）                                   |
-| `RUN` command                        | 是Dockerfile的核心部分（可以写多条）                         |
+| `RUN` command                        | 是Dockerfile的核心部分（可以写多条），镜像构建的时候需要运行的命令 |
 | `ADD` source_dir/file dest_dir/file  | 将宿主机的文件复制到容器内，如果是一个压缩文件，将会在复制后自动解压 |
 | `COPY` source_dir/file dest_dir/file | 和ADD相似，但是如果有压缩文件并不能解压                      |
-| `WORKDIR` path_dir                   | 设置工作目录                                                 |
+| `WORKDIR` path_dir                   | 设置镜像的工作目录                                           |
 | `VOLUME`                             | 创建一个可以从本地主机或其他容器挂载的挂载点，一般用来存放数据库和需要保持的数据等。 |
 | `USER`                               | 用于指定运行镜像所使用的用户                                 |
 | `ARG`                                | 设置构建参数                                                 |
+| EXPOSE                               | 保留端口配置                                                 |
+| CMD                                  | 指定这个容器启动的时候要运行的命令，只有最后一个会生效，可被替代。 |
+| ONBUILD                              | 当构建一个被继承 DockerFile 这个时候就会运行ONBUILD的指令，触发指令。 |
 
 #### FROM指定基础镜像
 
@@ -906,7 +1068,7 @@ CMD [ "echo", "$HOME" ]
 
 #### EXPOSE设置监听端口
 
- 告诉 `Docker` 服务端容器暴露的端口号，供互联系统使用。在启动容器时需要通过 `-P`，Docker 主机会自动分配一个端口转发到指定的端口。 
+告诉 `Docker` 服务端容器暴露的端口号，供互联系统使用。在启动容器时需要通过 `-P`，Docker 主机会自动分配一个端口转发到指定的端口。 
 
 为镜像设置监听端口，容器运行时会监听该端口，格式为：
 
@@ -1402,6 +1564,78 @@ docker import http://example.com/exampleimage.tgz example/imagerepo
 ```
 
  *注：用户既可以使用 `docker load` 来导入镜像存储文件到本地镜像库，也可以使用 `docker import` 来导入一个容器快照到本地镜像库。这两者的区别在于容器快照文件将丢弃所有的历史记录和元数据信息（即仅保存容器当时的快照状态），而镜像存储文件将保存完整记录，体积也要大。此外，从容器快照文件导入时可以重新指定标签等元数据信息。 
+
+## 八、发布镜像
+
+### 1. 推送至阿里云镜像
+
+阿里云镜像仓库地址：https://cr.console.aliyun.com/repository/
+
+#### 1.1 登录阿里云Docker Registry
+
+```
+$ sudo docker login --username=jjcc123321 registry.cn-hangzhou.aliyuncs.com
+```
+
+用于登录的用户名为阿里云账号全名，密码为开通服务时设置的密码。
+
+您可以在访问凭证页面修改凭证密码。
+
+#### 1.2. 从Registry中拉取镜像
+
+```
+$ sudo docker pull registry.cn-hangzhou.aliyuncs.com/1sd2/test:[镜像版本号]
+```
+
+#### 1.3. 将镜像推送到Registry
+
+```
+$ sudo docker login --username=jjcc123321 registry.cn-hangzhou.aliyuncs.com$ sudo docker tag [ImageId] registry.cn-hangzhou.aliyuncs.com/1sd2/test:[镜像版本号]$ sudo docker push registry.cn-hangzhou.aliyuncs.com/1sd2/test:[镜像版本号]
+```
+
+请根据实际镜像信息替换示例中的[ImageId]和[镜像版本号]参数。
+
+#### 1.4. 选择合适的镜像仓库地址
+
+从ECS推送镜像时，可以选择使用镜像仓库内网地址。推送速度将得到提升并且将不会损耗您的公网流量。
+
+如果您使用的机器位于VPC网络，请使用 registry-vpc.cn-hangzhou.aliyuncs.com 作为Registry的域名登录，并作为镜像命名空间前缀。
+
+### 2. 示例
+
+使用"docker tag"命令重命名镜像，并将它通过专有网络地址推送至Registry。
+
+```powershell
+PS C:\Users\Jjcc> docker images                                                                                                                                                                                    REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+mysql               latest              5ac22cccc3ae        2 days ago          544MB
+tomcat              latest              df72227b40e1        6 days ago          647MB
+PS C:\Users\Jjcc> docker tag df72227b40e1 registry.cn-hangzhou.aliyuncs.com/1sd2/test:1                                                                                                                            PS C:\Users\Jjcc> docker images                                                                                                                                                                                    REPOSITORY                                    TAG                 IMAGE ID            CREATED             SIZE
+mysql                                         latest              5ac22cccc3ae        2 days ago          544MB
+tomcat                                        latest              df72227b40e1        6 days ago          647MB
+registry.cn-hangzhou.aliyuncs.com/1sd2/test   1                   df72227b40e1        6 days ago          647MB
+
+```
+
+使用"docker images"命令找到镜像，将该镜像名称中的域名部分变更为Registry专有网络地址。
+
+```powershell
+PS C:\Users\Jjcc> docker push registry.cn-hangzhou.aliyuncs.com/1sd2/test                                                                                                                                          The push refers to repository [registry.cn-hangzhou.aliyuncs.com/1sd2/test]
+aca03caac7b1: Pushed                                                                                                                                                                                               4b1785e8102b: Pushed                                                                                                                                                                                               31d7eb4c72a9: Pushed                                                                                                                                                                                               afa12e842ed4: Pushed                                                                                                                                                                                               f73b2345c404: Pushed                                                                                                                                                                                               f5181c7ef902: Pushed                                                                                                                                                                                               2e5b4ca91984: Pushed                                                                                                                                                                                               527ade4639e0: Pushed                                                                                                                                                                                               c2c789d2d3c5: Pushed                                                                                                                                                                                               8803ef42039d: Pushed                                                                                                                                                                                               1: digest: sha256:600999dceed25b0aa50f7c234a0f67ba0490516e9893db3c5aaca863a739af32 size: 2421
+```
+
+## 九、Docker网络
+
+https://blog.csdn.net/qq_41822345/article/details/107123141#Docker__478
+
+
+
+
+
+
+
+
+
+
 
 
 
